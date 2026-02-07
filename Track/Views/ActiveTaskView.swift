@@ -36,16 +36,7 @@ struct ActiveTaskView: View {
             VStack(spacing: 16) {
                 // Header at the top
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .center, spacing: 6) {
-                        Image(systemName: category.icon)
-                            .font(.system(size: 12))
-                            .foregroundStyle(.cyan)
-                        Text(category.displayName.uppercased())
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
+                    CategoryPill(category: category)
 
                     Text(task.descriptionText)
                         .font(.headline)
@@ -133,7 +124,7 @@ struct ActiveTaskView: View {
 
 #Preview {
     let task = TrackTask(descriptionText: "Working on thesis chapter 3", taskType: TaskCategory.thesis.rawValue, startedAt: Date(), isActive: true)
-    return ActiveTaskView(task: task, now: .constant(Date()), timerRunning: .constant(true)) {}
+    ActiveTaskView(task: task, now: .constant(Date()), timerRunning: .constant(true)) {}
         .frame(width: 400, height: 300)
         .padding()
 }

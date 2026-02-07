@@ -127,25 +127,23 @@ struct SquarePopoverView: View {
         }
     }
 
+    @ViewBuilder
     private func completedTaskRow(_ task: TrackTask, index: Int) -> some View {
         let category = TaskCategory(rawValue: task.taskType) ?? .unassigned
         // Vary circle opacity based on position for visual depth
-        let circleOpacity = max(0.3, 1.0 - Double(index) * 0.2)
+        let circleOpacity = max(0.4, 1.0 - Double(index) * 0.15)
         
-        return HStack(alignment: .top, spacing: 14) {
-            // Cyan filled circle indicator
+        HStack(alignment: .top, spacing: 14) {
+            // Category-colored circle indicator
             Circle()
-                .fill(Color.cyan.opacity(circleOpacity))
+                .fill(category.textColor.opacity(circleOpacity))
                 .frame(width: 16, height: 16)
                 .padding(.top, 4)
 
             VStack(alignment: .leading, spacing: 6) {
-                // Category and duration row
-                HStack(spacing: 12) {
-                    Text(category.displayName.uppercased())
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.primary)
+                // Category pill and duration row
+                HStack(spacing: 10) {
+                    CategoryPill(category: category)
 
                     // Duration pill
                     Text(task.durationSeconds.formattedDuration)
