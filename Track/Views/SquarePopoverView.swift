@@ -37,6 +37,8 @@ struct SquarePopoverView: View {
     @State private var now: Date = .now
     @State private var timerRunning: Bool = false
     @State private var recentlyFinishedTasks: [TrackTask] = []
+    @State private var showingDatePicker: Bool = false
+    @State private var selectedDate: Date = .now
 
     private let timer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
@@ -49,15 +51,19 @@ struct SquarePopoverView: View {
                     ToolbarChipButton(title: "View", systemName: "rectangle.grid.2x2") {
                         // TODO: handle View action
                     }
-                    ToolbarChipButton(title: "Today", systemName: "calendar") {
-                        // TODO: handle Today action
+                    ToolbarChipButton(title: todayButtonTitle, systemName: "calendar") {
+                        showingDatePicker.toggle()
                     }
                 }
             }
 
             // Main panel area
             RoundedPanel {
-                if let task = activeTask ?? tasks.first(where: { $0.isActive }) {
+                if showingDatePicker {
+                    CalendarPickerView(selectedDate: $selectedDate) {
+                        showingDatePicker = false
+                    }
+                } else if let task = activeTask ?? tasks.first(where: { $0.isActive }) {
                     ActiveTaskView(task: task, now: $now, timerRunning: $timerRunning) {
                         stop(task: task)
                     }
@@ -70,20 +76,22 @@ struct SquarePopoverView: View {
             }
             .frame(minHeight: 260)
 
-            // Bottom input area styled like the screenshot
-            VStack(alignment: .leading, spacing: 8) {
-                // Styled text field
-                RoundedTextField(text: $inputText, placeholder: "Type Task for Today")
-                    .onSubmit { handleSubmit() }
-                    .textFieldStyle(.plain)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+            // Bottom input area styled like the screenshot (hidden when date picker is shown)
+            if !showingDatePicker {
+                VStack(alignment: .leading, spacing: 8) {
+                    // Styled text field
+                    RoundedTextField(text: $inputText, placeholder: "Type Task for Today")
+                        .onSubmit { handleSubmit() }
+                        .textFieldStyle(.plain)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
 
-                // Styled category button placed under and aligned to the right
-                HStack {
-                    Spacer()
-                    CategoryDropdownButton(selectedCategory: $selectedCategory)
-                        .buttonStyle(.plain)
+                    // Styled category button placed under and aligned to the right
+                    HStack {
+                        Spacer()
+                        CategoryDropdownButton(selectedCategory: $selectedCategory)
+                            .buttonStyle(.plain)
+                    }
                 }
             }
         }
@@ -98,6 +106,17 @@ struct SquarePopoverView: View {
     }
 
     // MARK: - Computed
+    
+    private var todayButtonTitle: String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(selectedDate) {
+            return "Today"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: selectedDate)
+        }
+    }
 
     private var completedTasks: [TrackTask] {
         tasks.filter { $0.isCompleted && !$0.isActive }
@@ -130,16 +149,8 @@ struct SquarePopoverView: View {
     @ViewBuilder
     private func completedTaskRow(_ task: TrackTask, index: Int) -> some View {
         let category = TaskCategory(rawValue: task.taskType) ?? .unassigned
-        // Vary circle opacity based on position for visual depth
-        let circleOpacity = max(0.4, 1.0 - Double(index) * 0.15)
         
         HStack(alignment: .top, spacing: 14) {
-            // Category-colored circle indicator
-            Circle()
-                .fill(category.textColor.opacity(circleOpacity))
-                .frame(width: 16, height: 16)
-                .padding(.top, 4)
-
             VStack(alignment: .leading, spacing: 6) {
                 // Category pill and duration row
                 HStack(spacing: 10) {
