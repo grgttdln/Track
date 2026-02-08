@@ -16,8 +16,9 @@ final class TrackTask {
     var taskType: String
     var isActive: Bool
     var isCompleted: Bool
+    var taskDate: Date
 
-    init(descriptionText: String, taskType: String, startedAt: Date? = nil, isActive: Bool = false, isCompleted: Bool = false, durationSeconds: Double = 0) {
+    init(descriptionText: String, taskType: String, taskDate: Date = Date(), startedAt: Date? = nil, isActive: Bool = false, isCompleted: Bool = false, durationSeconds: Double = 0) {
         self.createdAt = Date()
         self.startedAt = startedAt
         self.endedAt = nil
@@ -26,6 +27,7 @@ final class TrackTask {
         self.taskType = taskType
         self.isActive = isActive
         self.isCompleted = isCompleted
+        self.taskDate = Calendar.current.startOfDay(for: taskDate)
     }
 }
 

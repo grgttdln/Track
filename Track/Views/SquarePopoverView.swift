@@ -63,7 +63,7 @@ struct SquarePopoverView: View {
                     CalendarPickerView(selectedDate: $selectedDate) {
                         showingDatePicker = false
                     }
-                } else if let task = activeTask ?? tasks.first(where: { $0.isActive }) {
+                } else if let task = activeTaskForSelectedDate {
                     ActiveTaskView(task: task, now: $now, timerRunning: $timerRunning) {
                         stop(task: task)
                     }
@@ -118,16 +118,48 @@ struct SquarePopoverView: View {
         }
     }
 
+    /// Returns the effective date for a task (taskDate, or createdAt as fallback for legacy tasks)
+    private func effectiveDate(for task: TrackTask) -> Date {
+        // If taskDate is epoch (1970), it's likely a legacy task without taskDate set
+        // Fall back to createdAt in that case
+        let epoch = Date(timeIntervalSince1970: 0)
+        let calendar = Calendar.current
+        if calendar.isDate(task.taskDate, inSameDayAs: epoch) {
+            return task.createdAt
+        }
+        return task.taskDate
+    }
+    
+    private var activeTaskForSelectedDate: TrackTask? {
+        let calendar = Calendar.current
+        // First check if activeTask matches selected date
+        if let task = activeTask,
+           calendar.isDate(effectiveDate(for: task), inSameDayAs: selectedDate) {
+            return task
+        }
+        // Otherwise find any active task for the selected date
+        return tasks.first { task in
+            task.isActive && calendar.isDate(effectiveDate(for: task), inSameDayAs: selectedDate)
+        }
+    }
+    
     private var completedTasks: [TrackTask] {
-        tasks.filter { $0.isCompleted && !$0.isActive }
+        let calendar = Calendar.current
+        return tasks.filter { task in
+            task.isCompleted && !task.isActive &&
+            calendar.isDate(effectiveDate(for: task), inSameDayAs: selectedDate)
+        }
     }
     
     /// Combines recently finished tasks with queried completed tasks for immediate display
     private var allCompletedTasks: [TrackTask] {
+        let calendar = Calendar.current
         var result: [TrackTask] = []
-        // Add recently finished tasks that aren't yet in the query
+        // Add recently finished tasks that match the selected date and aren't yet in the query
         for task in recentlyFinishedTasks {
-            if !completedTasks.contains(where: { $0.id == task.id }) {
+            let matchesDate = calendar.isDate(effectiveDate(for: task), inSameDayAs: selectedDate)
+            let notInCompleted = !completedTasks.contains(where: { $0.id == task.id })
+            if matchesDate && notInCompleted {
                 result.append(task)
             }
         }
@@ -193,8 +225,8 @@ struct SquarePopoverView: View {
 
     private func tickActive() {
         guard timerRunning else { return }
-        // Find the active task (could be activeTask or from query)
-        guard let task = activeTask ?? tasks.first(where: { $0.isActive }) else { return }
+        // Find the active task for the selected date
+        guard let task = activeTaskForSelectedDate else { return }
         // Only update duration if timer has a valid startedAt (not paused)
         if let start = task.startedAt {
             task.durationSeconds = Date().timeIntervalSince(start)
@@ -207,10 +239,11 @@ struct SquarePopoverView: View {
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        // Create and start task with selected category
+        // Create and start task with selected category and date
         let task = TrackTask(
             descriptionText: trimmed,
             taskType: selectedCategory.rawValue,
+            taskDate: selectedDate,
             startedAt: Date(),
             isActive: true
         )
